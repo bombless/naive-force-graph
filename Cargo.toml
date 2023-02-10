@@ -1,0 +1,12 @@
+[package]
+name = "naive-force-graph"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies.naive-graph]
+path = "../naive-graph"
+
+[dev-dependencies]
+macroquad = "0.3"
