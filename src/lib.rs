@@ -1,6 +1,6 @@
-use naive_graph::{NodeId, EdgeId, Graph};
 use std::collections::HashSet;
 use std::ops::{DerefMut, Deref};
+pub use naive_graph::*;
 
 #[derive(Debug)]
 pub struct Node<NodeUserData> {
