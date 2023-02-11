@@ -204,7 +204,7 @@ impl<NodeUserData, EdgeUserData> ForceGraph<NodeUserData, EdgeUserData> {
             };
         }
 
-        if distance > self.parameters.ideal_distance * 1.5 && is_neighbor {
+        if distance > self.parameters.ideal_distance / 0.9 && is_neighbor {
             let f_x = -diff_x / distance * distance.powf(factor);
             let f_y = -diff_y / distance * distance.powf(factor);
                 

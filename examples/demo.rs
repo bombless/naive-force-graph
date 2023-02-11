@@ -41,10 +41,10 @@ async fn main() {
     // graph.add_edge(n3_idx, n5_idx, Default::default());
     // graph.add_edge(n4_idx, n5_idx, Default::default());
 
-    let n1 = graph.add_node(NodeData { user_data: 0, x: 100., y: 100., ..NodeData::default() });
-    let n2 = graph.add_node(NodeData { user_data: 1, x: 100., y: 100., ..NodeData::default() });
-    let n3 = graph.add_node(NodeData { user_data: 2, x: 100., y: 100., ..NodeData::default() });
-    let n4 = graph.add_node(NodeData { user_data: 3, x: 100., y: 100., ..NodeData::default() });
+    let n1 = graph.add_node(NodeData { user_data: 0, x: 300., y: 300., ..NodeData::default() });
+    let n2 = graph.add_node(NodeData { user_data: 1, x: 300., y: 300., ..NodeData::default() });
+    let n3 = graph.add_node(NodeData { user_data: 2, x: 300., y: 300., ..NodeData::default() });
+    let n4 = graph.add_node(NodeData { user_data: 3, x: 300., y: 300., ..NodeData::default() });
 
     graph.add_edge(n1, n2, Default::default());
     graph.add_edge(n1, n3, Default::default());
