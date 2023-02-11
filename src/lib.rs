@@ -147,8 +147,16 @@ impl<NodeUserData, EdgeUserData> ForceGraph<NodeUserData, EdgeUserData> {
         self.graph.visit_nodes_mut(f)
     }
     fn calculate_force(&self, dst: Vec2, src: Vec2, is_neighbor: bool) -> Vec2 {
-        let diff_x = dst.x - src.x;
-        let diff_y = dst.y - src.y;
+        fn bounce(v: f32, really_close_distance: f32) -> f32 {
+            if v.abs() <= really_close_distance / 10. {
+                let n = rand::random::<f32>();
+                return (n * 2. - 1.) * really_close_distance;
+            }
+            v
+        }
+        let really_close_distance = self.parameters.ideal_distance / 10000.;
+        let diff_x = bounce(dst.x - src.x, really_close_distance);
+        let diff_y = bounce(dst.y - src.y, really_close_distance);
         let distance = (diff_x.powi(2) + diff_y.powi(2)).sqrt();
 
         const FACTOR: f32 = -0.1;
@@ -182,7 +190,7 @@ impl<NodeUserData, EdgeUserData> ForceGraph<NodeUserData, EdgeUserData> {
         for &m in &self.nodes {
             let m_neighbors = self.graph.neighbor_id_set(m);
             if self.parameters.count < 100 {
-                println!("neighbors {:?}", m_neighbors.len())
+                //println!("neighbors {:?}", m_neighbors.len())
             }
             for &n in &self.nodes {
                 if m == n { continue }
