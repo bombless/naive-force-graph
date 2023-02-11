@@ -8,38 +8,48 @@ async fn main() {
     // create a force graph with default parameters
     let mut graph = <ForceGraph>::new(Default::default());
 
-    let n1_idx = graph.add_node(NodeData {
-        x: 250.0,
-        y: 250.0,
-        ..Default::default()
-    });
-    let n2_idx = graph.add_node(NodeData {
-        x: 750.0,
-        y: 250.0,
-        ..Default::default()
-    });
-    let n3_idx = graph.add_node(NodeData {
-        x: 250.0,
-        y: 750.0,
-        ..Default::default()
-    });
-    let n4_idx = graph.add_node(NodeData {
-        x: 750.0,
-        y: 750.0,
-        ..Default::default()
-    });
-    let n5_idx = graph.add_node(NodeData {
-        x: 500.0,
-        y: 500.0,
-        ..Default::default()
-    });
+    // let n1_idx = graph.add_node(NodeData {
+    //     x: 250.0,
+    //     y: 250.0,
+    //     ..Default::default()
+    // });
+    // let n2_idx = graph.add_node(NodeData {
+    //     x: 750.0,
+    //     y: 250.0,
+    //     ..Default::default()
+    // });
+    // let n3_idx = graph.add_node(NodeData {
+    //     x: 250.0,
+    //     y: 750.0,
+    //     ..Default::default()
+    // });
+    // let n4_idx = graph.add_node(NodeData {
+    //     x: 750.0,
+    //     y: 750.0,
+    //     ..Default::default()
+    // });
+    // let n5_idx = graph.add_node(NodeData {
+    //     x: 500.0,
+    //     y: 500.0,
+    //     ..Default::default()
+    // });
 
-    // set up links between nodes
-    // graph.add_edge(n1_idx, n2_idx, Default::default());
-    graph.add_edge(n1_idx, n5_idx, Default::default());
-    graph.add_edge(n2_idx, n5_idx, Default::default());
-    graph.add_edge(n3_idx, n5_idx, Default::default());
-    graph.add_edge(n4_idx, n5_idx, Default::default());
+    // // set up links between nodes
+    // // graph.add_edge(n1_idx, n2_idx, Default::default());
+    // graph.add_edge(n1_idx, n5_idx, Default::default());
+    // graph.add_edge(n2_idx, n5_idx, Default::default());
+    // graph.add_edge(n3_idx, n5_idx, Default::default());
+    // graph.add_edge(n4_idx, n5_idx, Default::default());
+
+    let n1 = graph.add_node(NodeData { x: 100., y: 100., ..NodeData::default() });
+    let n2 = graph.add_node(NodeData { x: 100., y: 100., ..NodeData::default() });
+    let n3 = graph.add_node(NodeData { x: 100., y: 100., ..NodeData::default() });
+    let n4 = graph.add_node(NodeData { x: 100., y: 100., ..NodeData::default() });
+
+    graph.add_edge(n1, n2, Default::default());
+    graph.add_edge(n1, n3, Default::default());
+    graph.add_edge(n4, n2, Default::default());
+    graph.add_edge(n4, n3, Default::default());
 
     let mut i = 0;
 
