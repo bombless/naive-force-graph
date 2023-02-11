@@ -197,11 +197,10 @@ impl<NodeUserData, EdgeUserData> ForceGraph<NodeUserData, EdgeUserData> {
         Vec2 { x: 0., y: 0. }        
     }
     pub fn update(&mut self, dt: f32) {
-        fn bounce(v: f32, really_close_distance: f32) -> f32 {
-            if v.abs() <= really_close_distance / 10. {
-                return really_close_distance * 1000.;
-            }
-            v
+        fn bounce(really_close_distance: f32) -> Vec2 {            
+            let x = rand::random::<f32>() * really_close_distance;
+            let y = (1. - x.powi(2)).sqrt() * really_close_distance;
+            Vec2 { x, y }
         }
         if self.parameters.count <= 100 {
             self.parameters.count += 1;
@@ -221,7 +220,7 @@ impl<NodeUserData, EdgeUserData> ForceGraph<NodeUserData, EdgeUserData> {
                 let distance = (diff.x.powi(2) + diff.y.powi(2)).sqrt();
 
                 if distance < really_close_distance && bouncing.is_none() {
-                    bouncing = Some((m, Vec2{ x: bounce(diff.x, really_close_distance), y: bounce(diff.y, really_close_distance), }));
+                    bouncing = Some((m, bounce(really_close_distance)));
                     continue;
                 }
 
