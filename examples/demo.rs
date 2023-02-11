@@ -6,7 +6,7 @@ const NODE_RADIUS: f32 = 15.0;
 #[macroquad::main("Demo")]
 async fn main() {
     // create a force graph with default parameters
-    let mut graph = <ForceGraph>::new(Default::default());
+    let mut graph = ForceGraph::<i32>::new(Default::default());
 
     // let n1_idx = graph.add_node(NodeData {
     //     x: 250.0,
@@ -41,10 +41,10 @@ async fn main() {
     // graph.add_edge(n3_idx, n5_idx, Default::default());
     // graph.add_edge(n4_idx, n5_idx, Default::default());
 
-    let n1 = graph.add_node(NodeData { x: 100., y: 100., ..NodeData::default() });
-    let n2 = graph.add_node(NodeData { x: 100., y: 100., ..NodeData::default() });
-    let n3 = graph.add_node(NodeData { x: 100., y: 100., ..NodeData::default() });
-    let n4 = graph.add_node(NodeData { x: 100., y: 100., ..NodeData::default() });
+    let n1 = graph.add_node(NodeData { user_data: 1, x: 100., y: 100., ..NodeData::default() });
+    let n2 = graph.add_node(NodeData { user_data: 2, x: 100., y: 100., ..NodeData::default() });
+    let n3 = graph.add_node(NodeData { user_data: 3, x: 100., y: 100., ..NodeData::default() });
+    let n4 = graph.add_node(NodeData { user_data: 4, x: 100., y: 100., ..NodeData::default() });
 
     graph.add_edge(n1, n2, Default::default());
     graph.add_edge(n1, n3, Default::default());
@@ -66,6 +66,10 @@ async fn main() {
 
         // draw edges
         graph.visit_edges(|_, node1, node2, _edge| {
+            if i < 100 {
+                println!("node1 {:?} [{} {}]", node1.index(), node1.x(), node1.y());
+                println!("node2 {:?} [{} {}]", node2.index(), node2.x(), node2.y());
+            }
             draw_line(node1.x(), node1.y(), node2.x(), node2.y(), 2.0, GRAY);
         });
 
@@ -76,7 +80,7 @@ async fn main() {
         // draw nodes
         graph.visit_nodes(|_, node| {
             if i < 100 {
-                // println!("[{} {}]", node.x(), node.y());
+                println!("{:?} [{} {}]", node.index(), node.x(), node.y());
             }
             draw_circle(node.x(), node.y(), NODE_RADIUS, WHITE);
 
@@ -88,6 +92,14 @@ async fn main() {
             {
                 draw_circle_lines(node.x(), node.y(), NODE_RADIUS, 2.0, RED);
             }
+
+            draw_text(
+                &node.user_data().to_string(),
+                node.x(),
+                node.y(),
+                25.0,
+                BLUE,
+            );
         });
 
         // drag nodes with the mouse

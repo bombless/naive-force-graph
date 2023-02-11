@@ -13,7 +13,7 @@ pub struct Node<NodeUserData> {
     id: Option<NodeId>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Vec2 {
     pub x: f32,
     pub y: f32,
@@ -212,6 +212,27 @@ impl<NodeUserData, EdgeUserData> ForceGraph<NodeUserData, EdgeUserData> {
             if self.parameters.count < 100 {
                 //println!("neighbors {:?}", m_neighbors.len())
             }
+            self.visit_neighbor_intersections(m, |info| {
+                let dx = info.x() - self.graph[m].x();
+                let dy = info.y() - self.graph[m].y();
+                let distance = (dx.powi(2) + dy.powi(2)).sqrt();
+
+                if distance < really_close_distance {
+                    return;
+                }
+
+                let vector = Vec2 {
+                    x: dx + dx / distance * really_close_distance,
+                    y: dy + dy / distance * really_close_distance,
+                };
+
+                if vector.x.is_nan() {
+                    panic!("nan")
+                }
+                
+                bouncing = Some((m, vector));
+            });
+            
             for &n in &self.nodes {
                 if m == n { continue }
                 let dst = &self.graph[m].data;
@@ -240,21 +261,6 @@ impl<NodeUserData, EdgeUserData> ForceGraph<NodeUserData, EdgeUserData> {
         }
     }
     pub fn visit_intersections<F: FnMut(IntersectionInfo)>(&self, mut f: F) {
-        fn get_line_intersection((p0, p1): &(Vec2, Vec2), (p2, p3): &(Vec2, Vec2)) -> Option<Vec2>
-        {
-            let s1 = Vec2 { x: p1.x - p0.x, y: p1.y - p0.y };
-            let s2 = Vec2 { x: p3.x - p2.x, y: p3.y - p2.y };
-        
-            let s = (-s1.y * (p0.x - p2.x) + s1.x * (p0.y - p2.y)) / (-s2.x * s1.y + s1.x * s2.y);
-            let t = ( s2.x * (p0.y - p2.y) - s2.y * (p0.x - p2.x)) / (-s2.x * s1.y + s1.x * s2.y);
-        
-            if s >= 0. && s <= 1. && t >= 0. && t <= 1. {
-                // Collision detected
-                return Some(Vec2 { x: p0.x + (t * s1.x), y: p0.y + (t * s1.y) });
-            }
-        
-            return None; // No collision
-        }
         let mut lines = Vec::new();
         self.graph.visit_edges(|_, n1, n2, _| {
             let from = Vec2 { x: n1.x(), y: n1.y() };
@@ -273,8 +279,49 @@ impl<NodeUserData, EdgeUserData> ForceGraph<NodeUserData, EdgeUserData> {
                 }
             }
         }
-
     }
+    pub fn visit_neighbor_intersections<F: FnMut(IntersectionInfo)>(&self, n: NodeId, mut f: F) {
+        let from = Vec2 { x: self.graph[n].x, y: self.graph[n].y };
+
+        let neighbors_data = self.graph.neighbors_data(n);
+
+        let neighbor_edges = neighbors_data.detach().map(|n| (from.clone(), Vec2 { x: n.x(), y: n.y() }));
+
+        let mut lines = Vec::new();
+        self.graph.visit_edges(|_, n1, n2, _| {
+            let from = Vec2 { x: n1.x(), y: n1.y() };
+            let to = Vec2 { x: n2.x(), y: n2.y() };
+
+            lines.push((from, to));
+        });
+
+        for line1 in neighbor_edges {
+            for line2 in &lines {
+                if &line1 == line2 {
+                    continue;
+                }
+                if let Some(Vec2 { x, y }) = get_line_intersection(&line1, line2) {
+                    f(IntersectionInfo { x, y })
+                }
+            }
+        }
+    }
+}
+
+
+fn get_line_intersection((p0, p1): &(Vec2, Vec2), (p2, p3): &(Vec2, Vec2)) -> Option<Vec2> {
+    let s1 = Vec2 { x: p1.x - p0.x, y: p1.y - p0.y };
+    let s2 = Vec2 { x: p3.x - p2.x, y: p3.y - p2.y };
+
+    let s = (-s1.y * (p0.x - p2.x) + s1.x * (p0.y - p2.y)) / (-s2.x * s1.y + s1.x * s2.y);
+    let t = ( s2.x * (p0.y - p2.y) - s2.y * (p0.x - p2.x)) / (-s2.x * s1.y + s1.x * s2.y);
+
+    if s >= 0. && s <= 1. && t >= 0. && t <= 1. {
+        // Collision detected
+        return Some(Vec2 { x: p0.x + (t * s1.x), y: p0.y + (t * s1.y) });
+    }
+
+    return None; // No collision
 }
 
 pub struct IntersectionInfo {
