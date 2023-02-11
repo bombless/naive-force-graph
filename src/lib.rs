@@ -207,6 +207,7 @@ impl<NodeUserData, EdgeUserData> ForceGraph<NodeUserData, EdgeUserData> {
         }
         let really_close_distance = self.parameters.ideal_distance / 10000.;
         let mut bouncing = None;
+        'loop_nodes:
         for &m in &self.nodes {
             let m_neighbors = self.graph.neighbor_id_set(m);
             if self.parameters.count < 100 {
@@ -232,6 +233,9 @@ impl<NodeUserData, EdgeUserData> ForceGraph<NodeUserData, EdgeUserData> {
                 
                 bouncing = Some((m, vector));
             });
+            if bouncing.is_some() {
+                break 'loop_nodes;
+            }
             
             for &n in &self.nodes {
                 if m == n { continue }
@@ -242,7 +246,7 @@ impl<NodeUserData, EdgeUserData> ForceGraph<NodeUserData, EdgeUserData> {
 
                 if distance < really_close_distance && bouncing.is_none() {
                     bouncing = Some((m, bounce(really_close_distance)));
-                    continue;
+                    break 'loop_nodes;
                 }
 
                 let f = self.calculate_force(diff, distance, m_neighbors.contains(&n));
