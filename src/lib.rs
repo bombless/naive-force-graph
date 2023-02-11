@@ -64,12 +64,12 @@ impl<NodeUserData> Node<NodeUserData> {
     }
     fn update(&mut self, parameters: &Parameters, dt: f32) {
 
-        if parameters.spring_factor * self.vx * dt > 10. || parameters.spring_factor * self.vy * dt > 10. {
-            println!(
-                "x {} y {} vx {} vy {} ax {} ay {}",
-                self.x.round(), self.y.round(), self.vx.round(), self.vy.round(), self.ax.round(), self.ay.round()
-            );
-        }
+        // if parameters.spring_factor * self.vx * dt > 10. || parameters.spring_factor * self.vy * dt > 10. {
+        //     println!(
+        //         "x {} y {} vx {} vy {} ax {} ay {}",
+        //         self.x.round(), self.y.round(), self.vx.round(), self.vy.round(), self.ax.round(), self.ay.round()
+        //     );
+        // }
 
         // println!("before {:?} {:?}", self.id.unwrap(), (self.data.x, self.data.y));
         self.data.x += parameters.spring_factor * self.vx * dt;
@@ -236,7 +236,7 @@ impl<NodeUserData, EdgeUserData> ForceGraph<NodeUserData, EdgeUserData> {
             }
             let mut force = Vec2 { x: 0., y: 0. };
             if self.graph[m].is_stable() {
-                println!("!stable {:?} dt {}", m, dt);
+                // println!("!stable {:?} dt {}", m, dt);
                 self.visit_neighbor_intersections(m, |info| {
                     if bouncing.is_some() {
                         return;
@@ -244,7 +244,7 @@ impl<NodeUserData, EdgeUserData> ForceGraph<NodeUserData, EdgeUserData> {
                     let dx = info.x() - self.graph[m].x();
                     let dy = info.y() - self.graph[m].y();
                     let distance = (dx.powi(2) + dy.powi(2)).sqrt();
-                    println!("intersection distance {} {:?}", distance, info.pair());
+                    // println!("intersection distance {} {:?}", distance, info.pair());
     
                     if distance < really_close_distance {
                         return;
