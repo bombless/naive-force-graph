@@ -69,6 +69,10 @@ async fn main() {
             draw_line(node1.x(), node1.y(), node2.x(), node2.y(), 2.0, GRAY);
         });
 
+        graph.visit_intersections(|info| {
+            draw_circle(info.x(), info.y(), 2.0, RED);
+        });
+
         // draw nodes
         graph.visit_nodes(|_, node| {
             if i < 100 {

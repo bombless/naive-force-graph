@@ -13,7 +13,7 @@ pub struct Node<NodeUserData> {
     id: Option<NodeId>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Vec2 {
     pub x: f32,
     pub y: f32,
@@ -171,11 +171,11 @@ impl<NodeUserData, EdgeUserData> ForceGraph<NodeUserData, EdgeUserData> {
         const FACTOR: f32 = -0.1;
 
         if distance < self.parameters.ideal_distance * 0.9 {
-            let f_x /* = diff_x * distance / distance.powi(2) */ = diff_x * distance.powf(FACTOR);
+            let f_x /* = diff.x * distance / distance.powi(2) */ = diff_x * distance.powf(FACTOR);
             let f_y /* = diff_y * distance / distance.powi(2) */ = diff_y * distance.powf(FACTOR);
             
             if f_x.is_nan() {
-                panic!("f_x nan")
+                panic!("f.x nan")
             }
 
             return Vec2 {
@@ -238,5 +238,55 @@ impl<NodeUserData, EdgeUserData> ForceGraph<NodeUserData, EdgeUserData> {
             self.graph[id].y += b.y;
             // println!("after {:?}", (self.graph[id].x, self.graph[id].y));
         }
+    }
+    pub fn visit_intersections<F: FnMut(IntersectionInfo)>(&self, mut f: F) {
+        fn get_line_intersection((p0, p1): &(Vec2, Vec2), (p2, p3): &(Vec2, Vec2)) -> Option<Vec2>
+        {
+            let s1 = Vec2 { x: p1.x - p0.x, y: p1.y - p0.y };
+            let s2 = Vec2 { x: p3.x - p2.x, y: p3.y - p2.y };
+        
+            let s = (-s1.y * (p0.x - p2.x) + s1.x * (p0.y - p2.y)) / (-s2.x * s1.y + s1.x * s2.y);
+            let t = ( s2.x * (p0.y - p2.y) - s2.y * (p0.x - p2.x)) / (-s2.x * s1.y + s1.x * s2.y);
+        
+            if s >= 0. && s <= 1. && t >= 0. && t <= 1. {
+                // Collision detected
+                return Some(Vec2 { x: p0.x + (t * s1.x), y: p0.y + (t * s1.y) });
+            }
+        
+            return None; // No collision
+        }
+        let mut lines = Vec::new();
+        self.graph.visit_edges(|_, n1, n2, _| {
+            let from = Vec2 { x: n1.x(), y: n1.y() };
+            let to = Vec2 { x: n2.x(), y: n2.y() };
+
+            lines.push((from, to));
+        });
+
+        for line1 in &lines {
+            for line2 in &lines {
+                if line1 == line2 {
+                    continue;
+                }
+                if let Some(Vec2 { x, y }) = get_line_intersection(line1, line2) {
+                    f(IntersectionInfo { x, y })
+                }
+            }
+        }
+
+    }
+}
+
+pub struct IntersectionInfo {
+    x: f32,
+    y: f32,
+}
+
+impl IntersectionInfo {
+    pub fn x(&self) -> f32 {
+        self.x
+    }
+    pub fn y(&self) -> f32 {
+        self.y
     }
 }
