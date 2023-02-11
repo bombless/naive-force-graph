@@ -123,7 +123,7 @@ impl Default for Parameters {
             ideal_distance: 45.,
             really_close_distance: 0.1,
             spring_factor: 10000.,
-            escape_intersection_factor: 10.,
+            escape_intersection_factor: 100.,
             distance_factor: 0.3,
             count: 0,
         }
