@@ -72,7 +72,7 @@ async fn main() {
         // draw nodes
         graph.visit_nodes(|_, node| {
             if i < 100 {
-                println!("[{} {}]", node.x(), node.y());
+                // println!("[{} {}]", node.x(), node.y());
             }
             draw_circle(node.x(), node.y(), NODE_RADIUS, WHITE);
 
