@@ -10,7 +10,6 @@ pub struct Node<NodeUserData> {
     vx: f32,
     vy: f32,
     id: Option<NodeId>,
-    count: i32,
 }
 
 #[derive(Debug)]
@@ -34,7 +33,6 @@ impl<NodeUserData> Node<NodeUserData> {
             vx: 0.,
             vy: 0.,
             id: None,
-            count: 0,
         }
     }
     pub fn index(&self) -> NodeId {
@@ -47,16 +45,12 @@ impl<NodeUserData> Node<NodeUserData> {
         self.data.y
     }
     fn apply(&mut self, force: Vec2) {
-        if self.count < 100 {
-            self.count += 1;
-            println!("apply force {:?}", force);
-        }
         self.ax += force.x;
         self.ay += force.y;
     }
     fn update(&mut self, parameters: &Parameters, dt: f32) {
-        self.data.x += parameters.spring_factor * self.vx;
-        self.data.y += parameters.spring_factor * self.vy;
+        self.data.x += parameters.spring_factor * self.vx * dt;
+        self.data.y += parameters.spring_factor * self.vy * dt;
         self.vx = self.ax * dt;
         self.vy = self.ay * dt;
         self.ax = 0.;
@@ -89,16 +83,16 @@ pub struct NodeData<NodeUserData> {
 
 pub struct Parameters {
     pub ideal_distance: f32,
-    pub relative_factor: f32,
     pub spring_factor: f32,
+    pub count: i32,
 }
 
 impl Default for Parameters {
     fn default() -> Self {
         Self {
             ideal_distance: 45.,
-            relative_factor: 1.2,
-            spring_factor: 1.,
+            spring_factor: 1000.,
+            count: 0,
         }
     }
 }
@@ -135,30 +129,54 @@ impl<NodeUserData, EdgeUserData> ForceGraph<NodeUserData, EdgeUserData> {
     pub fn visit_nodes_mut<F: FnMut(NodeId, &mut Node<NodeUserData>)>(&mut self, f: F) {
         self.graph.visit_nodes_mut(f)
     }
-    fn calculate_force(&self, dst: Vec2, src: Vec2) -> Vec2 {
+    fn calculate_force(&self, dst: Vec2, src: Vec2, is_neighbor: bool) -> Vec2 {
         let diff_x = dst.x - src.x;
         let diff_y = dst.y - src.y;
         let distance = (diff_x.powi(2) + diff_y.powi(2)).sqrt();
-        if distance > self.parameters.ideal_distance {
-            return Vec2 { x: 0., y: 0. };
+
+        const FACTOR: f32 = -0.1;
+
+        if distance < self.parameters.ideal_distance * 0.9 {
+            let f_x /* = diff_x * distance / distance.powi(2) */ = diff_x * distance.powf(FACTOR);
+            let f_y /* = diff_y * distance / distance.powi(2) */ = diff_y * distance.powf(FACTOR);
+            
+            return Vec2 {
+                x: f_x,
+                y: f_y,
+            };
         }
-        let f_x /* = diff_x * distance / distance.powi(2) */ = diff_x * distance.powf(-0.5);
-        let f_y /* = diff_y * distance / distance.powi(2) */ = diff_y * distance.powf(-0.5);
-        
-        Vec2 {
-            x: f_x,
-            y: f_y,
+
+        if distance > self.parameters.ideal_distance * 1.5 && is_neighbor {
+            let f_x = -diff_x * distance.powf(FACTOR);
+            let f_y = -diff_y * distance.powf(FACTOR);
+                
+            return Vec2 {
+                x: f_x,
+                y: f_y,
+            };
         }
+
+        Vec2 { x: 0., y: 0. }        
     }
     pub fn update(&mut self, dt: f32) {
+        if self.parameters.count <= 100 {
+            self.parameters.count += 1;
+        }
         for &m in &self.nodes {
+            let m_neighbors = self.graph.neighbor_id_set(m);
+            if self.parameters.count < 100 {
+                println!("neighbors {:?}", m_neighbors.len())
+            }
             for &n in &self.nodes {
                 if m == n { continue }
                 let m_data = &self.graph[m].data;
                 let m_pos = Vec2 { x: m_data.x, y: m_data.y };
                 let n_data = &self.graph[n].data;
                 let n_pos = Vec2 { x: n_data.x, y: n_data.y };
-                let f = self.calculate_force(m_pos, n_pos);
+                let f = self.calculate_force(m_pos, n_pos, m_neighbors.contains(&n));
+                if self.parameters.count < 100 {
+                    //println!("calculate_force {:?}", f)
+                }
                 self.graph[m].apply(f);
             }
             self.graph[m].update(&self.parameters, dt);

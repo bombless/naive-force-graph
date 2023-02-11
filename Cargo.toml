@@ -10,3 +10,7 @@ path = "../naive-graph"
 
 [dev-dependencies]
 macroquad = "0.3"
+
+[[bin]]
+name = "demo"
+path = "examples/demo.rs"

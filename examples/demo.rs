@@ -35,6 +35,7 @@ async fn main() {
     });
 
     // set up links between nodes
+    // graph.add_edge(n1_idx, n2_idx, Default::default());
     graph.add_edge(n1_idx, n5_idx, Default::default());
     graph.add_edge(n2_idx, n5_idx, Default::default());
     graph.add_edge(n3_idx, n5_idx, Default::default());
