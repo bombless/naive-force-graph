@@ -53,20 +53,17 @@ impl<NodeUserData> Node<NodeUserData> {
         self.ay += force.y;
     }
     fn update(&mut self, parameters: &Parameters, dt: f32) {
+
+        if parameters.spring_factor * self.vx * dt > 10. || parameters.spring_factor * self.vy * dt > 10. {
+            println!("x {} y {} vx {} vy {} ax {} ay {}", self.x, self.y, self.vx, self.vy, self.ax, self.ay);
+        }
+
         // println!("before {:?} {:?}", self.id.unwrap(), (self.data.x, self.data.y));
         self.data.x += parameters.spring_factor * self.vx * dt;
         self.data.y += parameters.spring_factor * self.vy * dt;
-        // if self.data.x.is_nan() {
-        //     println!(
-        //         "parameters.spring_factor * self.vx * dt = {} * {} * {}",
-        //         parameters.spring_factor, self.vx, dt
-        //     );
-        //     println!("self.vx = {}, self.ax = {}", self.vx, self.ax);
-        // }
-        // println!("after {:?} {:?}", self.id.unwrap(), (self.data.x, self.data.y));
-        if self.ax.is_nan() { panic!("ax nan") }
-        self.vx = self.ax;
-        self.vy = self.ay;
+        
+        self.vx = self.ax * dt;
+        self.vy = self.ay * dt;
         self.ax = 0.;
         self.ay = 0.;
     }
@@ -97,7 +94,9 @@ pub struct NodeData<NodeUserData> {
 
 pub struct Parameters {
     pub ideal_distance: f32,
+    pub really_close_distance: f32,
     pub spring_factor: f32,
+    pub distance_factor: f32,
     pub count: i32,
 }
 
@@ -105,7 +104,9 @@ impl Default for Parameters {
     fn default() -> Self {
         Self {
             ideal_distance: 45.,
-            spring_factor: 10.,
+            really_close_distance: 0.1,
+            spring_factor: 10000.,
+            distance_factor: 0.3,
             count: 0,
         }
     }
@@ -168,11 +169,12 @@ impl<NodeUserData, EdgeUserData> ForceGraph<NodeUserData, EdgeUserData> {
         let diff_x = diff.x;
         let diff_y = diff.y;
 
-        const FACTOR: f32 = -0.1;
+        let factor = self.parameters.distance_factor;
+        let really_close_distance = self.parameters.really_close_distance;
 
         if distance < self.parameters.ideal_distance * 0.9 {
-            let f_x /* = diff.x * distance / distance.powi(2) */ = diff_x * distance.powf(FACTOR);
-            let f_y /* = diff_y * distance / distance.powi(2) */ = diff_y * distance.powf(FACTOR);
+            let f_x = diff_x / distance / distance.max(really_close_distance).powf(factor);
+            let f_y = diff_y / distance / distance.max(really_close_distance).powf(factor);
             
             if f_x.is_nan() {
                 panic!("f.x nan")
@@ -185,8 +187,8 @@ impl<NodeUserData, EdgeUserData> ForceGraph<NodeUserData, EdgeUserData> {
         }
 
         if distance > self.parameters.ideal_distance * 1.5 && is_neighbor {
-            let f_x = -diff_x * distance.powf(FACTOR);
-            let f_y = -diff_y * distance.powf(FACTOR);
+            let f_x = -diff_x / distance * distance.powf(factor);
+            let f_y = -diff_y / distance * distance.powf(factor);
                 
             return Vec2 {
                 x: f_x,
@@ -205,7 +207,7 @@ impl<NodeUserData, EdgeUserData> ForceGraph<NodeUserData, EdgeUserData> {
         if self.parameters.count <= 100 {
             self.parameters.count += 1;
         }
-        let really_close_distance = self.parameters.ideal_distance / 10000.;
+        let really_close_distance = self.parameters.really_close_distance;
         let mut bouncing = None;
         'loop_nodes:
         for &m in &self.nodes {
@@ -213,6 +215,8 @@ impl<NodeUserData, EdgeUserData> ForceGraph<NodeUserData, EdgeUserData> {
             if self.parameters.count < 100 {
                 //println!("neighbors {:?}", m_neighbors.len())
             }
+            let mut force = Vec2 { x: 0., y: 0. };
+            bouncing = None;
             self.visit_neighbor_intersections(m, |info| {
                 let dx = info.x() - self.graph[m].x();
                 let dy = info.y() - self.graph[m].y();
@@ -222,18 +226,22 @@ impl<NodeUserData, EdgeUserData> ForceGraph<NodeUserData, EdgeUserData> {
                     return;
                 }
 
+                force = self.calculate_force(Vec2 { x: -dx, y: -dy }, distance, false);
+
                 let vector = Vec2 {
-                    x: dx + dx / distance * really_close_distance,
-                    y: dy + dy / distance * really_close_distance,
+                    x: dx,
+                    y: dy,
                 };
 
                 if vector.x.is_nan() {
                     panic!("nan")
                 }
                 
-                bouncing = Some((m, vector));
+                // bouncing = Some((m, vector));
             });
             if bouncing.is_some() {
+                self.graph[m].apply(force);
+                self.graph[m].update(&self.parameters, dt);
                 break 'loop_nodes;
             }
             
@@ -246,6 +254,7 @@ impl<NodeUserData, EdgeUserData> ForceGraph<NodeUserData, EdgeUserData> {
 
                 if distance < really_close_distance && bouncing.is_none() {
                     bouncing = Some((m, bounce(really_close_distance)));
+                    self.graph[m].update(&self.parameters, dt);
                     break 'loop_nodes;
                 }
 
