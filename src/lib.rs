@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::ops::{DerefMut, Deref};
 pub use naive_graph::*;
+use std::fmt::{Debug, Result as FmtRs, Formatter};
 
 #[derive(Debug)]
 pub struct Node<NodeUserData> {
@@ -103,6 +104,12 @@ pub struct ForceGraph<NodeUserData = (), EdgeUserData = ()> {
     nodes: HashSet<NodeId>,
 }
 
+impl<NodeUserData, EdgeUserData> Debug for ForceGraph<NodeUserData, EdgeUserData> {
+    fn fmt(&self, f: &mut Formatter) -> FmtRs {
+        write!(f, "{:?}", self.graph)
+    }
+}
+
 impl<NodeUserData, EdgeUserData> ForceGraph<NodeUserData, EdgeUserData> {
     pub fn new(parameters: Parameters) -> Self {
         Self {
@@ -111,19 +118,29 @@ impl<NodeUserData, EdgeUserData> ForceGraph<NodeUserData, EdgeUserData> {
             nodes: HashSet::new(),
         }
     }
+    pub fn node_count(&self) -> usize {
+        self.graph.node_count()
+    }
+    pub fn edge_count(&self) -> usize {
+        self.graph.edge_count()
+    }
     pub fn add_node(&mut self, data: NodeData<NodeUserData>) -> NodeId {
         let id = self.graph.add_node(Node::new(data));
         self.graph[id].id = Some(id);
         self.nodes.insert(id);
         id
     }
+    pub fn remove_node(&mut self, id: NodeId) {
+        self.graph.remove_node(id);
+        self.nodes.remove(&id);
+    }
     pub fn add_edge(&mut self, node1: NodeId, node2: NodeId, data: EdgeUserData) -> EdgeId {
         self.graph.add_edge(node1, node2, data)
     }
-    pub fn visit_edges<F: Fn(EdgeId, &Node<NodeUserData>, &Node<NodeUserData>, &EdgeUserData)>(&self, f: F) {
+    pub fn visit_edges<F: FnMut(EdgeId, &Node<NodeUserData>, &Node<NodeUserData>, &EdgeUserData)>(&self, f: F) {
         self.graph.visit_edges(f)
     }
-    pub fn visit_nodes<F: Fn(NodeId, &Node<NodeUserData>)>(&self, f: F) {
+    pub fn visit_nodes<F: FnMut(NodeId, &Node<NodeUserData>)>(&self, f: F) {
         self.graph.visit_nodes(f)
     }
     pub fn visit_nodes_mut<F: FnMut(NodeId, &mut Node<NodeUserData>)>(&mut self, f: F) {
