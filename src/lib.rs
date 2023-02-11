@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use std::ops::{DerefMut, Deref};
+use std::ops::{DerefMut, Deref, MulAssign};
 pub use naive_graph::*;
 use std::fmt::{Debug, Result as FmtRs, Formatter};
 
@@ -22,6 +22,16 @@ pub struct Vec2 {
 impl Vec2 {
     pub fn new(x: f32, y: f32) -> Self {
         Vec2 { x, y }
+    }
+    pub fn map<F: FnMut(f32)->f32>(self, mut f: F) -> Self {
+        Vec2 { x: f(self.x), y: f(self.y) }
+    }
+}
+
+impl MulAssign<f32> for Vec2 {
+    fn mul_assign(&mut self, rhs: f32) {
+        self.x *= rhs;
+        self.y *= rhs;
     }
 }
 
@@ -55,7 +65,10 @@ impl<NodeUserData> Node<NodeUserData> {
     fn update(&mut self, parameters: &Parameters, dt: f32) {
 
         if parameters.spring_factor * self.vx * dt > 10. || parameters.spring_factor * self.vy * dt > 10. {
-            println!("x {} y {} vx {} vy {} ax {} ay {}", self.x, self.y, self.vx, self.vy, self.ax, self.ay);
+            println!(
+                "x {} y {} vx {} vy {} ax {} ay {}",
+                self.x.round(), self.y.round(), self.vx.round(), self.vy.round(), self.ax.round(), self.ay.round()
+            );
         }
 
         // println!("before {:?} {:?}", self.id.unwrap(), (self.data.x, self.data.y));
@@ -66,6 +79,9 @@ impl<NodeUserData> Node<NodeUserData> {
         self.vy = self.ay * dt;
         self.ax = 0.;
         self.ay = 0.;
+    }
+    fn is_stable(&self) -> bool {
+        self.vx.abs() <= f32::EPSILON && self.vy.abs() <= f32::EPSILON
     }
     pub fn user_data(&self) -> &NodeUserData {
         &self.data.user_data
@@ -96,6 +112,7 @@ pub struct Parameters {
     pub ideal_distance: f32,
     pub really_close_distance: f32,
     pub spring_factor: f32,
+    pub escape_intersection_factor: f32,
     pub distance_factor: f32,
     pub count: i32,
 }
@@ -106,6 +123,7 @@ impl Default for Parameters {
             ideal_distance: 45.,
             really_close_distance: 0.1,
             spring_factor: 10000.,
+            escape_intersection_factor: 10.,
             distance_factor: 0.3,
             count: 0,
         }
@@ -211,38 +229,46 @@ impl<NodeUserData, EdgeUserData> ForceGraph<NodeUserData, EdgeUserData> {
         let mut bouncing = None;
         'loop_nodes:
         for &m in &self.nodes {
+            bouncing = None;
             let m_neighbors = self.graph.neighbor_id_set(m);
             if self.parameters.count < 100 {
                 //println!("neighbors {:?}", m_neighbors.len())
             }
             let mut force = Vec2 { x: 0., y: 0. };
-            bouncing = None;
-            self.visit_neighbor_intersections(m, |info| {
-                let dx = info.x() - self.graph[m].x();
-                let dy = info.y() - self.graph[m].y();
-                let distance = (dx.powi(2) + dy.powi(2)).sqrt();
-
-                if distance < really_close_distance {
-                    return;
+            if self.graph[m].is_stable() {
+                println!("!stable {:?} dt {}", m, dt);
+                self.visit_neighbor_intersections(m, |info| {
+                    if bouncing.is_some() {
+                        return;
+                    }
+                    let dx = info.x() - self.graph[m].x();
+                    let dy = info.y() - self.graph[m].y();
+                    let distance = (dx.powi(2) + dy.powi(2)).sqrt();
+                    println!("intersection distance {} {:?}", distance, info.pair());
+    
+                    if distance < really_close_distance {
+                        return;
+                    }
+    
+                    force = self.calculate_force(Vec2 { x: dx, y: dy }, distance, false);
+                    force *= self.parameters.escape_intersection_factor;
+    
+                    let vector = Vec2 {
+                        x: dx,
+                        y: dy,
+                    };
+    
+                    if vector.x.is_nan() {
+                        panic!("nan")
+                    }
+                    
+                    bouncing = Some((m, vector));
+                });
+                if bouncing.is_some() {
+                    self.graph[m].apply(force);
+                    self.graph[m].update(&self.parameters, dt);
+                    break 'loop_nodes;
                 }
-
-                force = self.calculate_force(Vec2 { x: -dx, y: -dy }, distance, false);
-
-                let vector = Vec2 {
-                    x: dx,
-                    y: dy,
-                };
-
-                if vector.x.is_nan() {
-                    panic!("nan")
-                }
-                
-                // bouncing = Some((m, vector));
-            });
-            if bouncing.is_some() {
-                self.graph[m].apply(force);
-                self.graph[m].update(&self.parameters, dt);
-                break 'loop_nodes;
             }
             
             for &n in &self.nodes {
@@ -279,16 +305,19 @@ impl<NodeUserData, EdgeUserData> ForceGraph<NodeUserData, EdgeUserData> {
             let from = Vec2 { x: n1.x(), y: n1.y() };
             let to = Vec2 { x: n2.x(), y: n2.y() };
 
-            lines.push((from, to));
+            lines.push(((n1.index(), n2.index()), (from, to)));
         });
 
-        for line1 in &lines {
-            for line2 in &lines {
+        for (pair1, line1) in &lines {
+            for (pair2, line2) in &lines {
                 if line1 == line2 {
                     continue;
                 }
+                if pair1.0 == pair2.0 || pair1.0 == pair2.1 || pair1.1 == pair2.0 || pair1.1 == pair2.1 {
+                    continue;
+                }
                 if let Some(Vec2 { x, y }) = get_line_intersection(line1, line2) {
-                    f(IntersectionInfo { x, y })
+                    f(IntersectionInfo { x, y, pair: (*pair1, *pair2) })
                 }
             }
         }
@@ -298,23 +327,36 @@ impl<NodeUserData, EdgeUserData> ForceGraph<NodeUserData, EdgeUserData> {
 
         let neighbors_data = self.graph.neighbors_data(n);
 
-        let neighbor_edges = neighbors_data.detach().map(|n| (from.clone(), Vec2 { x: n.x(), y: n.y() }));
+        let neighbor_edges = neighbors_data.detach().map(|node| {
+            let pair = (n, node.index());
+            let line = (from.clone(), Vec2 { x: node.x(), y: node.y() });
+            (pair, line)
+        });
 
         let mut lines = Vec::new();
         self.graph.visit_edges(|_, n1, n2, _| {
+            let n1index = n1.index();
+            let n2index = n2.index();
+            if n == n1index || n == n2index {
+                return;
+            }
+
             let from = Vec2 { x: n1.x(), y: n1.y() };
             let to = Vec2 { x: n2.x(), y: n2.y() };
 
-            lines.push((from, to));
+            lines.push(((n1.index(), n2.index()), (from, to)));
         });
 
-        for line1 in neighbor_edges {
-            for line2 in &lines {
+        for (pair1, line1) in neighbor_edges {
+            for (pair2, line2) in &lines {
                 if &line1 == line2 {
                     continue;
                 }
+                if pair1.0 == pair2.0 || pair1.0 == pair2.1 || pair1.1 == pair2.0 || pair1.1 == pair2.1 {
+                    continue;
+                }
                 if let Some(Vec2 { x, y }) = get_line_intersection(&line1, line2) {
-                    f(IntersectionInfo { x, y })
+                    f(IntersectionInfo { x, y, pair: (pair1, *pair2) })
                 }
             }
         }
@@ -340,6 +382,7 @@ fn get_line_intersection((p0, p1): &(Vec2, Vec2), (p2, p3): &(Vec2, Vec2)) -> Op
 pub struct IntersectionInfo {
     x: f32,
     y: f32,
+    pair: ((NodeId, NodeId), (NodeId, NodeId),),
 }
 
 impl IntersectionInfo {
@@ -348,5 +391,8 @@ impl IntersectionInfo {
     }
     pub fn y(&self) -> f32 {
         self.y
+    }
+    pub fn pair(&self) -> ((NodeId, NodeId), (NodeId, NodeId),) {
+        self.pair
     }
 }

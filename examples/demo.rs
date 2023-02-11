@@ -41,10 +41,10 @@ async fn main() {
     // graph.add_edge(n3_idx, n5_idx, Default::default());
     // graph.add_edge(n4_idx, n5_idx, Default::default());
 
-    let n1 = graph.add_node(NodeData { user_data: 1, x: 100., y: 100., ..NodeData::default() });
-    let n2 = graph.add_node(NodeData { user_data: 2, x: 100., y: 100., ..NodeData::default() });
-    let n3 = graph.add_node(NodeData { user_data: 3, x: 100., y: 100., ..NodeData::default() });
-    let n4 = graph.add_node(NodeData { user_data: 4, x: 100., y: 100., ..NodeData::default() });
+    let n1 = graph.add_node(NodeData { user_data: 0, x: 100., y: 100., ..NodeData::default() });
+    let n2 = graph.add_node(NodeData { user_data: 1, x: 100., y: 100., ..NodeData::default() });
+    let n3 = graph.add_node(NodeData { user_data: 2, x: 100., y: 100., ..NodeData::default() });
+    let n4 = graph.add_node(NodeData { user_data: 3, x: 100., y: 100., ..NodeData::default() });
 
     graph.add_edge(n1, n2, Default::default());
     graph.add_edge(n1, n3, Default::default());
@@ -67,8 +67,8 @@ async fn main() {
         // draw edges
         graph.visit_edges(|_, node1, node2, _edge| {
             if i < 100 {
-                println!("node1 {:?} [{} {}]", node1.index(), node1.x(), node1.y());
-                println!("node2 {:?} [{} {}]", node2.index(), node2.x(), node2.y());
+                // println!("node1 {:?} [{} {}]", node1.index(), node1.x(), node1.y());
+                // println!("node2 {:?} [{} {}]", node2.index(), node2.x(), node2.y());
             }
             draw_line(node1.x(), node1.y(), node2.x(), node2.y(), 2.0, GRAY);
         });
@@ -80,7 +80,7 @@ async fn main() {
         // draw nodes
         graph.visit_nodes(|_, node| {
             if i < 100 {
-                println!("{:?} [{} {}]", node.index(), node.x(), node.y());
+                // println!("{:?} [{} {}]", node.index(), node.x(), node.y());
             }
             draw_circle(node.x(), node.y(), NODE_RADIUS, WHITE);
 
