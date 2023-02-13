@@ -72,8 +72,8 @@ impl<NodeUserData> Node<NodeUserData> {
         // }
 
         // println!("before {:?} {:?}", self.id.unwrap(), (self.data.x, self.data.y));
-        self.data.x += parameters.spring_factor * self.vx * dt;
-        self.data.y += parameters.spring_factor * self.vy * dt;
+        self.data.x += parameters.spring_factor * self.vx * dt * parameters.scaling_factor;
+        self.data.y += parameters.spring_factor * self.vy * dt * parameters.scaling_factor;
         
         self.vx = self.ax * dt;
         self.vy = self.ay * dt;
@@ -110,6 +110,7 @@ pub struct NodeData<NodeUserData> {
 
 pub struct Parameters {
     pub ideal_distance: f32,
+    pub scaling_factor: f32,
     pub really_close_distance: f32,
     pub spring_factor: f32,
     pub escape_intersection_factor: f32,
@@ -121,12 +122,20 @@ impl Default for Parameters {
     fn default() -> Self {
         Self {
             ideal_distance: 45.,
+            scaling_factor: 1.,
             really_close_distance: 0.1,
             spring_factor: 10000.,
             escape_intersection_factor: 100.,
             distance_factor: 0.3,
             count: 0,
         }
+    }
+}
+
+impl Parameters {
+    pub fn scale_to_ideal_distance(distance: f32) -> Self {
+        let p = Self::default();
+        Self { scaling_factor: distance / p.ideal_distance, ..p }
     }
 }
 
@@ -179,6 +188,9 @@ impl<NodeUserData, EdgeUserData> ForceGraph<NodeUserData, EdgeUserData> {
         self.graph.visit_nodes_mut(f)
     }
     fn calculate_force(&self, diff: Vec2, distance: f32, is_neighbor: bool) -> Vec2 {
+
+        let diff = diff.map(|x| x / self.parameters.scaling_factor);
+        let distance = distance / self.parameters.scaling_factor;
 
         if distance <= f32::EPSILON {
             return Vec2 { x: 0., y: 0. };
@@ -360,6 +372,9 @@ impl<NodeUserData, EdgeUserData> ForceGraph<NodeUserData, EdgeUserData> {
                 }
             }
         }
+    }
+    pub fn neighbors_data<'a>(&'a self, node: NodeId) -> NeighborsData<'a, Node<NodeUserData>> {
+        self.graph.neighbors_data(node)
     }
 }
 
